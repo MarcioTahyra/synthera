@@ -1,0 +1,5 @@
+unitId,unitName,medicineId,medicineName,currentStock,forecastConsumption,actualConsumption,financialRisk,shortageRisk,leadTimeDays,batch,expiryDate
+hospital-central,Hospital Central,med-001,Ceftriaxona 1g,180,200,165,12500,48,7,CT2026A,2027-06-30
+hospital-central,Hospital Central,med-003,Dipirona 1g,1400,700,620,8400,12,5,DP2026B,2028-02-28
+upa-leste,UPA Leste,med-004,Morfina 10mg,15,25,22,5600,76,10,MF2026C,2027-03-31
+farmacia-vida-centro,Farmácia Vida Centro,med-006,Azitromicina 500mg,120,60,48,3100,8,4,AZ2026D,2027-11-30
