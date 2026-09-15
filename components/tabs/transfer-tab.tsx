@@ -34,12 +34,17 @@ const statusConfig: Record<Transfer["status"], { label: string; className: strin
   pendente: { label: "Pendente", className: "border border-[#f3c96d]/20 bg-[#f3c96d]/10 text-[#f3c96d]", icon: Clock },
 };
 
-type TransferTabProps = { data: PlatformSnapshot };
+type TransferTabProps = {
+  data: PlatformSnapshot;
+  onTransferComplete: () => Promise<void>;
+};
 
-export function TransferTab({ data }: TransferTabProps) {
+export function TransferTab({ data, onTransferComplete }: TransferTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [transfers, setTransfers] = useState<Transfer[]>(data.transfers);
   const [matchDecisions, setMatchDecisions] = useState<Record<string, MatchDecision>>({});
+  const [processingMatch, setProcessingMatch] = useState<string | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
   const [form, setForm] = useState({
     fromUnitId: "",
     toUnitId: "",
@@ -113,8 +118,41 @@ export function TransferTab({ data }: TransferTabProps) {
     .filter((candidate) => candidate.transferableQty > 0)
     .slice(0, 6);
 
-  function handleDecision(candidateId: string, decision: MatchDecision) {
-    setMatchDecisions((prev) => ({ ...prev, [candidateId]: decision }));
+  async function handleDecision(candidate: MatchCandidate, decision: MatchDecision) {
+    if (decision !== "accepted") {
+      setMatchDecisions((prev) => ({ ...prev, [candidate.id]: decision }));
+      return;
+    }
+
+    setProcessingMatch(candidate.id);
+    setMatchError(null);
+
+    try {
+      const response = await fetch("/api/transfers/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromUnitId: candidate.sourceUnitId,
+          toUnitId: candidate.destinationUnitId,
+          medicineId: candidate.medicineId,
+          quantity: candidate.transferableQty,
+          requestedBy: "Synthera Match",
+        }),
+      });
+
+      const payload = (await response.json()) as Transfer & { message?: string };
+      if (!response.ok) {
+        throw new Error(payload.message ?? "Não foi possível aceitar o match.");
+      }
+
+      setTransfers((prev) => [payload, ...prev]);
+      setMatchDecisions((prev) => ({ ...prev, [candidate.id]: decision }));
+      await onTransferComplete();
+    } catch (error) {
+      setMatchError(error instanceof Error ? error.message : "Não foi possível aceitar o match.");
+    } finally {
+      setProcessingMatch(null);
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -228,6 +266,12 @@ export function TransferTab({ data }: TransferTabProps) {
           </button>
         </div>
 
+        {matchError && (
+          <div className="mx-4 mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {matchError}
+          </div>
+        )}
+
         <div className="grid gap-4 p-4 xl:grid-cols-2">
           {matchCandidates.map((candidate) => {
             const decision = matchDecisions[candidate.id];
@@ -291,29 +335,32 @@ export function TransferTab({ data }: TransferTabProps) {
 
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   <button
-                    onClick={() => handleDecision(candidate.id, "accepted")}
+                    onClick={() => void handleDecision(candidate, "accepted")}
+                    disabled={processingMatch !== null}
                     className={`rounded-xl px-2 py-2.5 text-sm font-semibold transition ${decision === "accepted"
                       ? "bg-[#68ddbd] text-[#08110f] shadow-[0_8px_18px_rgba(104,221,189,0.18)]"
                       : "border border-[#68ddbd]/30 bg-[#68ddbd]/10 text-[#68ddbd] hover:bg-[#68ddbd]/15"
-                      }`}
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
                   >
-                    Aceitar
+                    {processingMatch === candidate.id ? "Processando..." : "Aceitar"}
                   </button>
                   <button
-                    onClick={() => handleDecision(candidate.id, "rejected")}
+                    onClick={() => void handleDecision(candidate, "rejected")}
+                    disabled={processingMatch !== null}
                     className={`rounded-xl px-2 py-2.5 text-sm font-semibold transition ${decision === "rejected"
                       ? "bg-red-500 text-white shadow-[0_8px_18px_rgba(239,68,68,0.18)]"
                       : "border border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/15"
-                      }`}
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
                   >
                     Negar
                   </button>
                   <button
-                    onClick={() => handleDecision(candidate.id, "ignored")}
+                    onClick={() => void handleDecision(candidate, "ignored")}
+                    disabled={processingMatch !== null}
                     className={`rounded-xl px-2 py-2.5 text-sm font-semibold transition ${decision === "ignored"
                       ? "bg-slate-600 text-white"
                       : "border border-slate-500/30 bg-[#101821] text-slate-300 hover:bg-[#171f27]"
-                      }`}
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
                   >
                     Ignorar
                   </button>

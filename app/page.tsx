@@ -21,6 +21,7 @@ import { InventorySyncTab } from "@/components/tabs/inventory-sync-tab";
 type TabKey = "dashboard" | "match" | "unidades" | "estoque" | "sincronizar" | "compras";
 
 const APP_NAME = "SYNTHERA";
+const PLATFORM_LOAD_TIMEOUT_MS = 10000;
 
 const tabItems: { key: TabKey; label: string; icon: typeof TrendingUp }[] = [
   { key: "dashboard", label: "Dashboard Executivo", icon: TrendingUp },
@@ -38,37 +39,50 @@ export default function Home() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   async function refreshPlatformData() {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), PLATFORM_LOAD_TIMEOUT_MS);
+
     try {
-      const response = await fetch("/api/platform");
+      const response = await fetch("/api/platform", { signal: controller.signal });
       if (!response.ok) {
-        throw new Error("Falha ao carregar a plataforma.");
+        const payload = (await response.json()) as { message?: string };
+        throw new Error(payload.message ?? "Falha ao carregar a plataforma.");
       }
 
       const payload = (await response.json()) as PlatformSnapshot;
       setPlatformData(payload);
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Falha inesperada ao carregar os dados.");
+      setLoadError(error instanceof DOMException && error.name === "AbortError"
+        ? "A plataforma demorou para responder. Verifique o servidor local e tente novamente."
+        : error instanceof Error ? error.message : "Falha inesperada ao carregar os dados.");
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }
 
   useEffect(() => {
     const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), PLATFORM_LOAD_TIMEOUT_MS);
 
     async function loadPlatformData() {
       try {
         const response = await fetch("/api/platform", { signal: controller.signal });
         if (!response.ok) {
-          throw new Error("Falha ao carregar a plataforma.");
+          const payload = (await response.json()) as { message?: string };
+          throw new Error(payload.message ?? "Falha ao carregar a plataforma.");
         }
 
         const payload = (await response.json()) as PlatformSnapshot;
         setPlatformData(payload);
       } catch (error) {
         if ((error as Error).name === "AbortError") {
+          setLoadError("A plataforma demorou para responder. Verifique o servidor local e tente novamente.");
           return;
         }
 
         setLoadError(error instanceof Error ? error.message : "Falha inesperada ao carregar os dados.");
+      } finally {
+        window.clearTimeout(timeoutId);
       }
     }
 
@@ -185,7 +199,7 @@ export default function Home() {
           </header>
 
           {activeTab === "dashboard" && <DashboardTab data={data} />}
-          {activeTab === "match" && <TransferTab data={data} />}
+          {activeTab === "match" && <TransferTab data={data} onTransferComplete={refreshPlatformData} />}
           {activeTab === "unidades" && <UnitsTab data={data} />}
           {activeTab === "estoque" && <StockTab data={data} selectedUnitId={selectedUnitId} />}
           {activeTab === "sincronizar" && <InventorySyncTab data={data} onUploadComplete={refreshPlatformData} />}

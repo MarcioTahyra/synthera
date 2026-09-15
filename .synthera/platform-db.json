@@ -207,7 +207,7 @@
     {
       "unitId": "hospital-central",
       "medicineId": "med-001",
-      "currentStock": 180,
+      "currentStock": 200,
       "forecastConsumption": 200
     },
     {
@@ -219,7 +219,7 @@
     {
       "unitId": "hospital-central",
       "medicineId": "med-003",
-      "currentStock": 1400,
+      "currentStock": 1290,
       "forecastConsumption": 700
     },
     {
@@ -447,7 +447,7 @@
     {
       "unitId": "farmacia-vida-centro",
       "medicineId": "med-001",
-      "currentStock": 220,
+      "currentStock": 200,
       "forecastConsumption": 120
     },
     {
@@ -483,7 +483,7 @@
     {
       "unitId": "drogaria-mais",
       "medicineId": "med-003",
-      "currentStock": 60,
+      "currentStock": 170,
       "forecastConsumption": 170
     },
     {
@@ -500,6 +500,28 @@
     }
   ],
   "transfers": [
+    {
+      "id": "trf-1789493524116",
+      "fromUnitId": "farmacia-vida-centro",
+      "toUnitId": "hospital-central",
+      "medicineId": "med-001",
+      "medicineName": "Ceftriaxona 1g",
+      "quantity": 20,
+      "status": "concluída",
+      "date": "2026-09-15",
+      "requestedBy": "Synthera Match"
+    },
+    {
+      "id": "trf-1789493506424",
+      "fromUnitId": "hospital-central",
+      "toUnitId": "drogaria-mais",
+      "medicineId": "med-003",
+      "medicineName": "Dipirona 1g",
+      "quantity": 110,
+      "status": "concluída",
+      "date": "2026-09-15",
+      "requestedBy": "Synthera Match"
+    },
     {
       "id": "trf-001",
       "fromUnitId": "hospital-central",
